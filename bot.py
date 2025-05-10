@@ -11,7 +11,7 @@ from telegram.ext import (
 
 # ====== Configuration ======
 BOT_TOKEN = "7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8"
-MONGO_URI = "mongodb+srv://Akash1234:Demon123@cluster0.lpghpdo.mongodb.net/?retryWrites=true&w=majority"  # e.g. mongodb+srv://...
+MONGO_URI = "mongodb+srv://demonxyonko:<db_password>@rickycyan.fswqzgl.mongodb.net/?retryWrites=true&w=majority&appName=rickycyan"  # e.g. mongodb+srv://...
 
 # ====== Logging ======
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
