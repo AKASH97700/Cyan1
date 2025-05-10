@@ -9,102 +9,96 @@ from telegram.ext import (
     filters,
 )
 
-# Config
+# ====== Configuration ======
 BOT_TOKEN = "7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8"
-MONGO_URI = "mongodb+srv://Akash1234:Demon123@cluster0.lpghpdo.mongodb.net/?retryWrites=true&w=majority"  # e.g., mongodb+srv://...
+MONGO_URI = "mongodb+srv://Akash1234:Demon123@cluster0.lpghpdo.mongodb.net/?retryWrites=true&w=majority"  # e.g. mongodb+srv://...
 
-# Logging
-logging.basicConfig(
-    format='[%(levelname)s] %(asctime)s - %(message)s',
-    level=logging.INFO
-)
+# ====== Logging ======
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# MongoDB client setup
+# ====== MongoDB Setup ======
 mongo_client = MongoClient(MONGO_URI)
-db = mongo_client['telegram_bot']
-gban_collection = db['gban_users']
+db = mongo_client["telegram_bot"]
+gban_collection = db["gban_users"]
 
-# Helper to check GBAN
+# ====== Helper Function ======
 def is_globally_banned(user_id: int) -> bool:
     return gban_collection.find_one({"user_id": user_id}) is not None
 
-# Command: /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I'm your advanced group management bot.")
+# ====== Handlers ======
 
-# Welcome handler
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        if is_globally_banned(member.id):
-            await update.effective_chat.ban_member(member.id)
-            await update.message.reply_text(f"{member.full_name} is globally banned and was removed.")
-        else:
-            await update.message.reply_text(f"Welcome, {member.full_name}!")
+def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    update.message.reply_text("Hello! I'm your advanced group management bot.")
 
-# /ban
-async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
-        return await update.message.reply_text("Reply to the user to ban.")
+        update.message.reply_text("Reply to a user to ban them.")
+        return
     user_id = update.message.reply_to_message.from_user.id
-    await update.effective_chat.ban_member(user_id)
-    await update.message.reply_text("User banned.")
+    context.bot.ban_chat_member(update.effective_chat.id, user_id)
+    update.message.reply_text("User has been banned.")
 
-# /unban
-async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
-        return await update.message.reply_text("Reply to the user to unban.")
+        update.message.reply_text("Reply to a user to unban them.")
+        return
     user_id = update.message.reply_to_message.from_user.id
-    await update.effective_chat.unban_member(user_id)
-    await update.message.reply_text("User unbanned.")
+    context.bot.unban_chat_member(update.effective_chat.id, user_id)
+    update.message.reply_text("User has been unbanned.")
 
-# /mute
-async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
-        return await update.message.reply_text("Reply to the user to mute.")
+        update.message.reply_text("Reply to a user to mute them.")
+        return
     user_id = update.message.reply_to_message.from_user.id
     perms = ChatPermissions(can_send_messages=False)
-    await context.bot.restrict_chat_member(update.effective_chat.id, user_id, perms)
-    await update.message.reply_text("User muted.")
+    context.bot.restrict_chat_member(update.effective_chat.id, user_id, permissions=perms)
+    update.message.reply_text("User has been muted.")
 
-# /unmute
-async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
-        return await update.message.reply_text("Reply to the user to unmute.")
+        update.message.reply_text("Reply to a user to unmute them.")
+        return
     user_id = update.message.reply_to_message.from_user.id
-    perms = ChatPermissions(can_send_messages=True, can_send_media_messages=True,
-                            can_send_polls=True, can_send_other_messages=True)
-    await context.bot.restrict_chat_member(update.effective_chat.id, user_id, perms)
-    await update.message.reply_text("User unmuted.")
+    perms = ChatPermissions(
+        can_send_messages=True,
+        can_send_media_messages=True,
+        can_send_polls=True,
+        can_send_other_messages=True
+    )
+    context.bot.restrict_chat_member(update.effective_chat.id, user_id, permissions=perms)
+    update.message.reply_text("User has been unmuted.")
 
-# /gban
-async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.reply_to_message:
-        return await update.message.reply_text("Reply to a user to gban them.")
+        update.message.reply_text("Reply to a user to gban them.")
+        return
     user = update.message.reply_to_message.from_user
     user_id = user.id
 
     if is_globally_banned(user_id):
-        return await update.message.reply_text("User is already globally banned.")
+        update.message.reply_text("User is already globally banned.")
+        return
 
     gban_collection.insert_one({"user_id": user_id})
-    await update.message.reply_text(f"{user.full_name} has been globally banned.")
+    update.message.reply_text(f"{user.full_name} has been globally banned.")
 
     try:
-        await update.effective_chat.ban_member(user_id)
-        await update.message.reply_text("User removed from this chat.")
+        context.bot.ban_chat_member(update.effective_chat.id, user_id)
+        update.message.reply_text("User was also banned from this group.")
     except Exception as e:
-        await update.message.reply_text(f"Couldn't ban from this chat: {e}")
+        update.message.reply_text(f"Couldn't ban from this group: {e}")
 
-# Auto-kick GBANNED users when they join
-async def auto_kick(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def auto_kick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         if is_globally_banned(member.id):
-            await update.effective_chat.ban_member(member.id)
-            await update.message.reply_text(f"{member.full_name} is globally banned and was removed.")
+            context.bot.ban_chat_member(update.effective_chat.id, member.id)
+            update.message.reply_text(f"{member.full_name} is globally banned and was removed.")
 
-# Main
-async def main():
+# ====== Main Function ======
+
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -115,9 +109,8 @@ async def main():
     app.add_handler(CommandHandler("gban", gban))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, auto_kick))
 
-    logger.info("Bot running...")
-    await app.run_polling()
+    logger.info("Bot started.")
+    app.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
