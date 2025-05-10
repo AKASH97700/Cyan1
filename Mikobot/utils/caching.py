@@ -23,7 +23,7 @@ TEMP_ADMIN_CACHE_BLOCK = TTLCache(maxsize=512, ttl=(60 * 10), timer=perf_counter
 async def admin_cache_reload(m: Message or CallbackQuery, status=None) -> List[int]:
     start = time()
     with THREAD_LOCK:
-        if isinstance(m, CallbackQuery):
+        if isinstance(m,(Message, CallbackQuery)):
             m = m.message
         if status is not None:
             TEMP_ADMIN_CACHE_BLOCK[m.chat.id] = status
