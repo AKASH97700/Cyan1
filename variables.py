@@ -30,7 +30,7 @@ class Config(object):
     MESSAGE_DUMP = -1002231034844
 
     # MongoDB configuration
-    MONGO_DB_URI = "mongodb+srv://Akash1234:Demon123@cluster0.lpghpdo.mongodb.net/?retryWrites=true&w=majority"
+    MONGO_DB_URI = "mongodb+srv://demonxyonko:<db_password>@rickycyan.fswqzgl.mongodb.net/?retryWrites=true&w=majority&appName=rickycyan"
 
     # Support chat and support ID
     SUPPORT_CHAT = "@MaeveBot69"
