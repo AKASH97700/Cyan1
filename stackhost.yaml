@@ -1,9 +1,9 @@
 user:
-  name: akash 
-  github: AKASH97700
+  name: ishikki
+  github: ishikki-akabane
 
 language: "python"
-python_version: "3.12"
+python_version: "3.10"
 
 commands:
   build:
