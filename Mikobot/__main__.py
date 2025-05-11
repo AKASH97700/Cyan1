@@ -1023,4 +1023,12 @@ if __name__ == "__main__":
         LOGGER.info(
             "------------------------ Stopped Services ------------------------"
         )
+from telegram.ext import Application
+from gban import add_gban_handlers
+
+application = Application.builder().token("7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8").build()
+
+add_gban_handlers(application)
+
+application.run_polling()
 # <==================================================== END ===================================================>
