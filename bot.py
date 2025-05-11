@@ -158,19 +158,33 @@ async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------------------- Lock/Unlock ----------------------------
 lockable_permissions = {
-    'media': ChatPermissions(can_send_media_messages=False),
+    'media': ChatPermissions(
+        can_send_audios=False,
+        can_send_documents=False,
+        can_send_photos=False,
+        can_send_videos=False,
+        can_send_video_notes=False,
+        can_send_voice_notes=False
+    ),
     'links': ChatPermissions(can_add_web_page_previews=False),
     'stickers': ChatPermissions(can_send_other_messages=False),
     'polls': ChatPermissions(can_send_polls=False),
-    'inline': ChatPermissions(can_use_inline_bots=False)
+    'inline': ChatPermissions(can_send_other_messages=False)
 }
 
 unlockable_permissions = {
-    'media': ChatPermissions(can_send_media_messages=True),
+    'media': ChatPermissions(
+        can_send_audios=True,
+        can_send_documents=True,
+        can_send_photos=True,
+        can_send_videos=True,
+        can_send_video_notes=True,
+        can_send_voice_notes=True
+    ),
     'links': ChatPermissions(can_add_web_page_previews=True),
     'stickers': ChatPermissions(can_send_other_messages=True),
     'polls': ChatPermissions(can_send_polls=True),
-    'inline': ChatPermissions(can_use_inline_bots=True)
+    'inline': ChatPermissions(can_send_other_messages=True)
 }
 
 async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE):
