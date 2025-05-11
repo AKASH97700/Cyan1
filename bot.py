@@ -10,7 +10,7 @@ from telegram.ext import (
 )
 
 # ====== Configuration ======
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN = "7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8"
 MONGO_URI = "mongodb+srv://demonxyonko:<db_password>@rickycyan.fswqzgl.mongodb.net/?retryWrites=true&w=majority&appName=rickycyan"
 
 # ====== Logging ======
