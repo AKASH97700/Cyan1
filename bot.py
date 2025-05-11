@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 with open('config.json') as f:
     config = json.load(f)
 
-TOKEN = config['7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8']
+TOKEN = config['token']
 GBAN_FILE = 'gbans.json'
 SETTINGS_FILE = 'group_settings.json'
 
