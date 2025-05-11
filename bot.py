@@ -1,221 +1,268 @@
-# Advanced Telegram Group Management Bot
-# Supports: Welcome per-group, Ban/Gban, Mute/Unmute, AFK, Google Search, Font Styling, Flood Control,
-# Lock/Unlock Restrictions, Command Help Menu, Logging, /info command
+#!/usr/bin/env python3
+# bot.py
 
 import sqlite3
 import logging
 from datetime import datetime, timedelta
 from collections import defaultdict
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
+
+from telegram import (
+    Update,
+    ChatPermissions,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
-    filters, ContextTypes
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    filters,
+    ContextTypes,
 )
 
-# ---------------------------- Configuration ----------------------------
-TOKEN = "7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8"
-ADMIN_ID = 7039652738  # your Telegram ID
-GROUP_IDS = []  # for GBAN target groups
-LOG_CHANNEL_ID = -1002231034844  # your log channel
+# --------------------- CONFIGURATION ---------------------
+TOKEN          = "7737679888:AAGWAHt0-eBn1K3Mo9dOKISAhlu4rL0pHU8"
+ADMIN_ID       = 7039652738
+LOG_CHANNEL_ID = -1002231034844    # where logs go
+GROUP_IDS      = [-1002350016913]                 # list of chat IDs for GBAN
 
-# ---------------------------- Database Setup ----------------------------
-conn = sqlite3.connect("bot_data.db", check_same_thread=False)
-c = conn.cursor()
-c.execute("CREATE TABLE IF NOT EXISTS gban (user_id INTEGER PRIMARY KEY)")
-c.execute("CREATE TABLE IF NOT EXISTS afk (user_id INTEGER PRIMARY KEY, reason TEXT, since TEXT)")
-c.execute("CREATE TABLE IF NOT EXISTS welcome (chat_id INTEGER PRIMARY KEY, text TEXT)")
+# --------------------- DATABASE ---------------------
+conn = sqlite3.connect("bot.db", check_same_thread=False)
+c    = conn.cursor()
+c.execute("""
+    CREATE TABLE IF NOT EXISTS gban (
+        user_id INTEGER PRIMARY KEY
+    )
+""")
+c.execute("""
+    CREATE TABLE IF NOT EXISTS afk (
+        user_id INTEGER PRIMARY KEY,
+        reason  TEXT,
+        since   TEXT
+    )
+""")
+c.execute("""
+    CREATE TABLE IF NOT EXISTS welcome (
+        chat_id INTEGER PRIMARY KEY,
+        text    TEXT
+    )
+""")
 conn.commit()
 
-# ---------------------------- Logging Setup ----------------------------
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+# --------------------- LOGGING ---------------------
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
 
-async def log_action(context: ContextTypes.DEFAULT_TYPE, action: str):
-    await context.bot.send_message(chat_id=LOG_CHANNEL_ID, text=action)
+async def log_action(context: ContextTypes.DEFAULT_TYPE, text: str):
+    try:
+        await context.bot.send_message(chat_id=LOG_CHANNEL_ID, text=text)
+    except:
+        pass
 
-# ---------------------------- Flood Control ----------------------------
+# --------------------- FLOOD CONTROL ---------------------
 user_times = defaultdict(list)
 FLOOD_LIMIT = 5
-FLOOD_TIME = 10  # seconds
+FLOOD_WINDOW = 10  # seconds
 
-async def flood_control(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type not in ["group", "supergroup"]:
+async def flood_middleware(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type not in ("group", "supergroup"):
         return
     uid = update.effective_user.id
-    now = datetime.now()
-    user_times[uid] = [t for t in user_times[uid] if (now - t).seconds < FLOOD_TIME]
-    user_times[uid].append(now)
-    if len(user_times[uid]) > FLOOD_LIMIT:
-        await update.message.chat.restrict_member(uid, ChatPermissions())
-        await update.message.reply_text("Muted for flooding.")
-        await log_action(context, f"Flood mute {uid} in {update.effective_chat.id}")
+    now = datetime.utcnow()
+    times = [t for t in user_times[uid] if (now - t).seconds < FLOOD_WINDOW]
+    times.append(now)
+    user_times[uid] = times
+    if len(times) > FLOOD_LIMIT:
+        await update.effective_chat.restrict_member(
+            uid,
+            ChatPermissions(can_send_messages=False)
+        )
+        await update.message.reply_text("🔇 You have been muted for flooding.")
+        await log_action(context, f"Flood mute: {uid} in {update.effective_chat.id}")
         user_times[uid].clear()
 
-# ---------------------------- Core Commands ----------------------------
+# --------------------- CORE ---------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! Use /help")
+    await update.message.reply_text("🤖 Hello! Use /help to see commands.")
 
 async def alive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("I am alive")
+    await update.message.reply_text("✅ I'm alive!")
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    kb = [[InlineKeyboardButton(cat, callback_data=cat)] for cat in ["mod","afk","search_font","flood_welcome","info"]]
-    await update.message.reply_text("Choose:", reply_markup=InlineKeyboardMarkup(kb))
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    kb = [
+        [InlineKeyboardButton("Moderation", callback_data="MOD")],
+        [InlineKeyboardButton("AFK",        callback_data="AFK")],
+        [InlineKeyboardButton("Welcome",    callback_data="WEL")],
+        [InlineKeyboardButton("Info",       callback_data="INFO")],
+    ]
+    await update.message.reply_text(
+        "Select a category:", reply_markup=InlineKeyboardMarkup(kb)
+    )
 
-async def help_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    sec = update.callback_query.data
-    texts = {
-        'mod':'/ban /unban /mute /unmute /gban /ungban /lock /unlock',
-        'afk':'/afk /info',
-        'search_font':'/google /font',
-        'flood_welcome':'/setwelcome (in group) FloodControl active',
-        'info':'/info <reply or id>'
+async def help_btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    sections = {
+        "MOD":  "/ban, /unban, /mute, /unmute, /gban, /ungban",
+        "AFK":  "/afk [reason], auto-return on your next message",
+        "WEL":  "/setwelcome (group only)",
+        "INFO": "/info [@user|user_id|reply]",
     }
-    await update.callback_query.edit_message_text(texts.get(sec,'-'))
+    await q.edit_message_text(sections.get(q.data, "❓"))
 
-# ---------------------------- Welcome per-group ----------------------------
+# --------------------- WELCOME ---------------------
 async def set_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type not in ["group","supergroup"]: return
-    if not context.args: return await update.message.reply_text("Usage: /setwelcome text")
-    text = ' '.join(context.args)
-    cid = update.effective_chat.id
-    c.execute("REPLACE INTO welcome VALUES(?,?)", (cid, text))
+    if update.effective_chat.type not in ("group", "supergroup"):
+        return await update.message.reply_text("This works in groups only.")
+    if not context.args:
+        return await update.message.reply_text("Usage: /setwelcome Welcome {first_name}!")
+    text = " ".join(context.args)
+    chat_id = update.effective_chat.id
+    c.execute("REPLACE INTO welcome (chat_id, text) VALUES (?,?)", (chat_id, text))
     conn.commit()
-    await update.message.reply_text("Welcome set.")
+    await update.message.reply_text("✅ Welcome message set for this group.")
 
 async def greet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    cid = update.effective_chat.id
-    c.execute("SELECT text FROM welcome WHERE chat_id=?", (cid,))
+    chat_id = update.effective_chat.id
+    c.execute("SELECT text FROM welcome WHERE chat_id=?", (chat_id,))
     row = c.fetchone()
-    txt = row[0] if row else "Welcome {first}!"
-    for u in update.message.new_chat_members:
-        await update.message.reply_text(txt.format(first=u.first_name))
+    tmpl = row[0] if row else "Welcome {first_name}!"
+    for member in update.message.new_chat_members:
+        await update.message.reply_text(tmpl.format(first_name=member.first_name))
 
-# ---------------------------- Moderation ----------------------------
+# --------------------- MODERATION ---------------------
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args: return
-    target=int(context.args[0])
-    await update.effective_chat.ban_member(target)
-    await update.message.reply_text(f"Banned {target}")
-    await log_action(context,f"ban {target} in {update.effective_chat.id}")
+    if not context.args:
+        return await update.message.reply_text("Usage: /ban <user_id>")
+    uid = int(context.args[0])
+    await update.effective_chat.ban_member(uid)
+    await update.message.reply_text(f"🚫 Banned {uid}")
+    await log_action(context, f"Ban: {uid} in {update.effective_chat.id}")
 
 async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args: return
-    t=int(context.args[0])
-    await update.effective_chat.unban_member(t)
-    await update.message.reply_text(f"Unbanned {t}")
-    await log_action(context,f"unban {t} in {update.effective_chat.id}")
+    if not context.args:
+        return await update.message.reply_text("Usage: /unban <user_id>")
+    uid = int(context.args[0])
+    await update.effective_chat.unban_member(uid)
+    await update.message.reply_text(f"✅ Unbanned {uid}")
+    await log_action(context, f"Unban: {uid} in {update.effective_chat.id}")
 
 async def gban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id!=ADMIN_ID or not context.args: return
-    u=int(context.args[0])
-    c.execute("INSERT OR IGNORE INTO gban VALUES(?)",(u,));conn.commit()
+    if update.effective_user.id != ADMIN_ID or not context.args:
+        return
+    uid = int(context.args[0])
+    c.execute("INSERT OR IGNORE INTO gban (user_id) VALUES (?)", (uid,))
+    conn.commit()
     for gid in GROUP_IDS:
-        await context.bot.ban_chat_member(gid,u)
-    await update.message.reply_text(f"Globally banned {u}")
-    await log_action(context,f"gban {u}")
+        await context.bot.ban_chat_member(gid, uid)
+    await update.message.reply_text(f"🌐 Globally banned {uid}")
+    await log_action(context, f"GBAN: {uid}")
 
 async def ungban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id!=ADMIN_ID or not context.args: return
-    u=int(context.args[0])
-    c.execute("DELETE FROM gban WHERE user_id=?",(u,));conn.commit()
+    if update.effective_user.id != ADMIN_ID or not context.args:
+        return
+    uid = int(context.args[0])
+    c.execute("DELETE FROM gban WHERE user_id=?", (uid,))
+    conn.commit()
     for gid in GROUP_IDS:
-        await context.bot.unban_chat_member(gid,u)
-    await update.message.reply_text(f"Globally unbanned {u}")
-    await log_action(context,f"ungban {u}")
+        await context.bot.unban_chat_member(gid, uid)
+    await update.message.reply_text(f"🌐 Globally unbanned {uid}")
+    await log_action(context, f"UNGBAN: {uid}")
 
 async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args: return
-    u=int(context.args[0]);await update.effective_chat.restrict_member(u,ChatPermissions())
-    await update.message.reply_text(f"Muted {u}")
-    await log_action(context,f"mute {u}")
+    if not context.args:
+        return await update.message.reply_text("Usage: /mute <user_id>")
+    uid = int(context.args[0])
+    await update.effective_chat.restrict_member(uid, ChatPermissions(can_send_messages=False))
+    await update.message.reply_text(f"🔇 Muted {uid}")
+    await log_action(context, f"Mute: {uid}")
 
 async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args: return
-    u=int(context.args[0]);await update.effective_chat.restrict_member(u,ChatPermissions(can_send_messages=True))
-    await update.message.reply_text(f"Unmuted {u}")
-    await log_action(context,f"unmute {u}")
+    if not context.args:
+        return await update.message.reply_text("Usage: /unmute <user_id>")
+    uid = int(context.args[0])
+    await update.effective_chat.restrict_member(uid, ChatPermissions(can_send_messages=True))
+    await update.message.reply_text(f"🔊 Unmuted {uid}")
+    await log_action(context, f"Unmute: {uid}")
 
-# ---------------------------- Lock/Unlock ----------------------------
-locks={'media':{'can_send_photos':False,'can_send_videos':False,'can_send_documents':False},
-       'links':{'can_add_web_page_previews':False},
-       'stickers':{'can_send_other_messages':False},
-       'polls':{'can_send_polls':False}}
-
-async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args: return
-    t=context.args[0].lower()
-    if t in locks:
-        await context.bot.set_chat_permissions(update.effective_chat.id, **locks[t])
-        await update.message.reply_text(f"Locked {t}")
-
-async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args: return
-    t=context.args[0].lower()
-    if t in locks:
-        perms=ChatPermissions(**{k:True for k in locks[t]})
-        await context.bot.set_chat_permissions(update.effective_chat.id, perms)
-        await update.message.reply_text(f"Unlocked {t}")
-
-# ---------------------------- AFK & Info ----------------------------
+# --------------------- AFK ---------------------
 async def afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid=update.effective_user.id;r=' '.join(context.args) or 'AFK'
-    c.execute("REPLACE INTO afk VALUES(?,?,?)",(uid,r,datetime.now().isoformat()));conn.commit()
-    await update.message.reply_text(f"AFK: {r}")
+    uid = update.effective_user.id
+    reason = " ".join(context.args) if context.args else "AFK"
+    since = datetime.utcnow().isoformat()
+    c.execute("REPLACE INTO afk (user_id,reason,since) VALUES (?,?,?)", (uid, reason, since))
+    conn.commit()
+    await update.message.reply_text(f"🏖 You are now AFK: {reason}")
 
-async def return_afk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid=update.effective_user.id;c.execute("DELETE FROM afk WHERE user_id=?",(uid,));conn.commit()
+async def return_mention(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    c.execute("DELETE FROM afk WHERE user_id=?", (uid,))
+    conn.commit()
 
+async def check_mentions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text or ""
+    for row in c.execute("SELECT user_id,reason,since FROM afk"):
+        uid, reason, since = row
+        if str(uid) in text:
+            then = datetime.fromisoformat(since)
+            delta = datetime.utcnow() - then
+            await update.message.reply_text(f"↩️ {uid} is AFK: {reason} ({delta.seconds}s ago)")
+            break
+
+# --------------------- INFO ---------------------
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user=update.message.from_user
-    target=user if not context.args else await context.bot.get_chat(int(context.args[0]))
-    uid=target.id;chatid=update.effective_chat.id
-    # dp
-    photo = (await context.bot.get_user_profile_photos(uid, limit=1)).photos
-    dp = photo[0][0].file_id if photo else None
-    # statuses
-    c.execute("SELECT 1 FROM gban WHERE user_id=?",(uid,));isg=bool(c.fetchone())
-    # can't check realtime mute/ban easily
-    text=(f"Name: {target.full_name}\nUsername: @{target.username}\nID: {uid}\nChat: {chatid}\nGBAN: {isg}\nProfilePicID: {dp}")
+    target = update.message.from_user
+    # if user passes an ID or replies, fetch that user
+    if context.args:
+        try:
+            target = await context.bot.get_chat(int(context.args[0]))
+        except:
+            if update.message.reply_to_message:
+                target = update.message.reply_to_message.from_user
+    uid = target.id
+    photos = await context.bot.get_user_profile_photos(uid, limit=1)
+    dp = photos.photos[0][0].file_id if photos.total_count else "None"
+    c.execute("SELECT 1 FROM gban WHERE user_id=?", (uid,))
+    is_gban = bool(c.fetchone())
+    text = (
+        f"Name: {target.full_name}\n"
+        f"Username: @{target.username}\n"
+        f"User ID: {uid}\n"
+        f"Chat ID: {update.effective_chat.id}\n"
+        f"Globally Banned: {is_gban}\n"
+        f"Profile Pic File ID: {dp}"
+    )
     await update.message.reply_text(text)
 
-# ---------------------------- Search & Font ----------------------------
-async def google(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        q='+'.join(context.args)
-        await update.message.reply_text(f"https://google.com/search?q={q}")
-
-async def font(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args)<2: return
-    st,txt=context.args[0], ' '.join(context.args[1:])
-    if st=='bold': out=''.join(chr(0x1D400+ord(c)-65) if c.isupper() else c for c in txt)
-    else: out=txt
-    await update.message.reply_text(out)
-
-# ---------------------------- Runner ----------------------------
+# --------------------- RUNNER ---------------------
 def main():
-    app=Application.builder().token(TOKEN).build()
-    # core
-    app.add_handler(CommandHandler("start",start))
-    app.add_handler(CommandHandler("alive",alive))
-    app.add_handler(CommandHandler("help",help_command))
-    app.add_handler(CallbackQueryHandler(help_button))
-    # welcome
-    app.add_handler(CommandHandler("setwelcome",set_welcome))
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS,greet))
-    # moderation
-    for cmd in [ban,unban,gban,ungban,mute,unmute,lock,unlock]:
-        app.add_handler(CommandHandler(cmd.__name__,cmd))
-    # afk/info
-    app.add_handler(CommandHandler("afk",afk))
-    app.add_handler(CommandHandler("info",info))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,return_afk))
-    # flood, search,font
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS,flood_control))
-    app.add_handler(CommandHandler("google",google))
-    app.add_handler(CommandHandler("font",font))
-    print("Running...")
+    app = Application.builder().token(TOKEN).build()
+
+    # middleware
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, flood_middleware), 0)
+
+    # commands
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("alive", alive))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CallbackQueryHandler(help_btn))
+
+    app.add_handler(CommandHandler("setwelcome", set_welcome))
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, greet))
+
+    for cmd in ("ban","unban","gban","ungban","mute","unmute"):
+        app.add_handler(CommandHandler(cmd, globals()[cmd]))
+
+    app.add_handler(CommandHandler("afk", afk))
+    app.add_handler(CommandHandler("info", info))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, return_mention))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_mentions))
+
+    print("Bot is running…")
     app.run_polling()
 
-if __name__=='__main__':
+if __name__ == "__main__":
     main()
-    
