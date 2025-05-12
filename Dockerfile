@@ -4,7 +4,7 @@ WORKDIR /root/Mikobot
 
 COPY . .
 
-RUN apt-get install -y ffmpeg python3-pip curl
+RUN apt-get update && apt-get install -y ffmpeg python3-pip curl
 RUN pip3 install --upgrade pip setuptools
 
 RUN pip install -U -r requirements.txt
