@@ -11,7 +11,7 @@ bleach==6.2.0
 
 # ==== C ====
 cachetools==5.5.0
-cockroachdb==2.1.8
+cockroachdb
 
 # ==== D ====
 dateparser==1.2.0
