@@ -1,11 +1,10 @@
-FROM python:3.12
+FROM python:3.12-slim
 
 WORKDIR /root/Mikobot
 
 COPY . .
 
-# Install system dependencies (added image libs for Pillow)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     build-essential \
@@ -17,18 +16,14 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libfreetype6-dev \
     liblcms2-dev \
-    libopenjpeg-dev \
-    libtiff-dev \
+    libopenjp2-7-dev \
+    libtiff5-dev \
     libwebp-dev \
-    tk-dev \
     git \
- && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and setuptools
 RUN pip3 install --upgrade pip setuptools
 
-# Install Python dependencies
 RUN pip3 install -r requirements.txt
 
 CMD ["python3", "-m", "Mikobot"]
