@@ -19,22 +19,22 @@ class Config(object):
 
     # <================================================ REQUIRED ======================================================>
     # Telegram API configuration
-    API_ID =  # Get this value from my.telegram.org/apps
-    API_HASH = ""
+    API_ID = 9429810 # Get this value from my.telegram.org/apps
+    API_HASH = "06007846a1793a9883596434b299d0ed"
 
     # Database configuration (PostgreSQL)
-    DATABASE_URL = ""
+    DATABASE_URL = "postgresql://leothebadass_user:MUO2pxmgRnZ6FRm7KIncrJAMu7hcOvs0@dpg-d08paqp5pdvs739oghig-a.oregon-postgres.render.com/leothebadass"
 
     # Event logs chat ID and message dump chat ID
-    EVENT_LOGS = -1002231034844
-    MESSAGE_DUMP = -1002231034844
+    EVENT_LOGS = -1002603125657
+    MESSAGE_DUMP = -1002603125657
 
     # MongoDB configuration
-    MONGO_DB_URI = ""
+    MONGO_DB_URI = "mongodb+srv://demonxyonko:<db_password>@rickycyan.fswqzgl.mongodb.net/?retryWrites=true&w=majority&appName=rickycyan"
 
     # Support chat and support ID
-    SUPPORT_CHAT = "@MaeveBot69"
-    SUPPORT_ID = -1002350016913
+    SUPPORT_CHAT = "@silvi_suppory"
+    SUPPORT_ID = -1002603125657
 
     # Database name
     DB_NAME = "leothebadass"
