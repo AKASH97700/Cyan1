@@ -10,7 +10,7 @@ bleach==6.2.0
 
 # ==== C ====
 cachetools==5.5.0
-cockroachdb
+cockroachdb==0.3.5  # Latest available
 
 # ==== D ====
 dateparser==1.2.0
@@ -54,7 +54,7 @@ psutil==6.1.0
 psycopg2-binary==2.9.10
 pyjokes==0.6.0
 pynewtonmath==1.0.1
-pymongo[srv]==3.12.3
+"pymongo[srv]==3.12.3"
 pyrate-limiter==3.7.0
 pytz==2024.1
 python-arq==6.0.7
