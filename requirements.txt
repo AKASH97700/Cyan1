@@ -40,7 +40,7 @@ lxml==5.3.0
 
 # ==== M ====
 markdown2==2.5.1
-motor>=3.0.0
+motor>=3.0
 
 # ==== N ====
 nekos.py==1.1.0
@@ -60,7 +60,7 @@ pytz==2024.1
 python-arq==6.0.7
 pyrogram==2.0.106
 python-telegram-bot==21.6
-pymongo==3.12.3
+pymongo>=4.1,<5.0
 
 # ==== R ====
 regex==2024.7.24
