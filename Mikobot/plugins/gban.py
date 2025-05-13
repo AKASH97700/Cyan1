@@ -9,7 +9,7 @@ from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import CommandHandler, ContextTypes
 
-from Mikobot import application, DRAGONS, DEV_USERS, SUPPORT_CHAT
+from Mikobot import Application, DRAGONS, DEV_USERS, SUPPORT_CHAT
 from Mikobot.modules.sql import gban_sql as sql
 from Mikobot.modules.helper_funcs.chat_status import dev_plus, user_admin
 from Mikobot.modules.helper_funcs.extraction import extract_user_and_text
@@ -18,7 +18,7 @@ from Mikobot.modules.helper_funcs.alternate import typing_action
 # Helper Function: Try to ban user in a specific chat
 async def try_ban_user_in_chat(chat_id: int, user_id: int):
     try:
-        await application.bot.ban_chat_member(chat_id, user_id)
+        await Application.bot.ban_chat_member(chat_id, user_id)
     except BadRequest as err:
         if err.message not in ["User not found", "User_id_invalid"]:
             print(f"Error banning in chat {chat_id}: {err}")
