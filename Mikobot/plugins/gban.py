@@ -9,11 +9,11 @@ from telegram.constants import ParseMode
 from telegram.error import BadRequest
 from telegram.ext import CommandHandler, ContextTypes
 
-from Exon import application, DRAGONS, DEV_USERS, SUPPORT_CHAT
-from Exon.modules.sql import gban_sql as sql
-from Exon.modules.helper_funcs.chat_status import dev_plus, user_admin
-from Exon.modules.helper_funcs.extraction import extract_user_and_text
-from Exon.modules.helper_funcs.alternate import typing_action
+from Mikobot import application, DRAGONS, DEV_USERS, SUPPORT_CHAT
+from Mikobot.modules.sql import gban_sql as sql
+from Mikobot.modules.helper_funcs.chat_status import dev_plus, user_admin
+from Mikobot.modules.helper_funcs.extraction import extract_user_and_text
+from Mikobot.modules.helper_funcs.alternate import typing_action
 
 # Helper Function: Try to ban user in a specific chat
 async def try_ban_user_in_chat(chat_id: int, user_id: int):
