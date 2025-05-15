@@ -3,7 +3,7 @@ user:
   github: ishikki-akabane
 
 language: "python"
-python_version: "3.12"
+python_version: "3.11"
 
 commands:
   build:
