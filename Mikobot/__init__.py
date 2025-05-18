@@ -2,6 +2,10 @@
 # https://github.com/Team-ProjectCodeX
 
 # <============================================== IMPORTS =========================================================>
+# yaemiko/__init__.py
+
+__version__ = "0.1.0"
+
 import asyncio
 import json
 import logging
