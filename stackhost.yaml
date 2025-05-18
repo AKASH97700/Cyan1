@@ -8,7 +8,7 @@ python_version: "3.13"
 commands:
   build:
     - "pip install -r requirements.txt"
- upgrade package:
+ upgrade_package:
     - "nano inxi"
   start:
     - "python3 -m Mikobot"
